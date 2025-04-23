@@ -12,5 +12,19 @@
  * ```
  * */
 export default class Team {
-  // TODO: write your logic here
+  constructor(characters = []) {
+    this.characters = Array.from(characters); 
+  }
+
+  add(character) {
+    this.characters.push(character);
+  }
+
+  addAll(...characters) {
+    this.characters.push(...characters);
+  }
+
+  toArray() {
+    return [...this.characters];
+  }
 }

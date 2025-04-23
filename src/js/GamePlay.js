@@ -1,7 +1,8 @@
 import { calcHealthLevel, calcTileType } from './utils';
+import GameStateService from './GameStateService';
 
 export default class GamePlay {
-  constructor() {
+  constructor(storage = window.localStorage) {
     this.boardSize = 8;
     this.container = null;
     this.boardEl = null;
@@ -12,6 +13,7 @@ export default class GamePlay {
     this.newGameListeners = [];
     this.saveGameListeners = [];
     this.loadGameListeners = [];
+    this.gameStateService = new GameStateService(storage);
   }
 
   bindToDOM(container) {
@@ -21,11 +23,6 @@ export default class GamePlay {
     this.container = container;
   }
 
-  /**
-   * Draws boardEl with specific theme
-   *
-   * @param theme
-   */
   drawUi(theme) {
     this.checkBinding();
 
@@ -63,11 +60,6 @@ export default class GamePlay {
     this.cells = Array.from(this.boardEl.children);
   }
 
-  /**
-   * Draws positions (with chars) on boardEl
-   *
-   * @param positions array of PositionedCharacter objects
-   */
   redrawPositions(positions) {
     for (const cell of this.cells) {
       cell.innerHTML = '';
@@ -91,56 +83,26 @@ export default class GamePlay {
     }
   }
 
-  /**
-   * Add listener to mouse enter for cell
-   *
-   * @param callback
-   */
   addCellEnterListener(callback) {
     this.cellEnterListeners.push(callback);
   }
 
-  /**
-   * Add listener to mouse leave for cell
-   *
-   * @param callback
-   */
   addCellLeaveListener(callback) {
     this.cellLeaveListeners.push(callback);
   }
 
-  /**
-   * Add listener to mouse click for cell
-   *
-   * @param callback
-   */
   addCellClickListener(callback) {
     this.cellClickListeners.push(callback);
   }
 
-  /**
-   * Add listener to "New Game" button click
-   *
-   * @param callback
-   */
   addNewGameListener(callback) {
     this.newGameListeners.push(callback);
   }
 
-  /**
-   * Add listener to "Save Game" button click
-   *
-   * @param callback
-   */
   addSaveGameListener(callback) {
     this.saveGameListeners.push(callback);
   }
 
-  /**
-   * Add listener to "Load Game" button click
-   *
-   * @param callback
-   */
   addLoadGameListener(callback) {
     this.loadGameListeners.push(callback);
   }
@@ -169,13 +131,32 @@ export default class GamePlay {
 
   onSaveGameClick(event) {
     event.preventDefault();
-    this.saveGameListeners.forEach(o => o.call(null));
+    this.saveGameListeners.forEach(o => {
+      const state = o.call(null);
+      if (state) {
+        try {
+          this.gameStateService.save(state);
+          GamePlay.showMessage('Игра успешно сохранена!');
+        } catch {
+          GamePlay.showError('Ошибка при сохранении игры');
+        }
+      }
+    });
   }
 
   onLoadGameClick(event) {
-    event.preventDefault();
-    this.loadGameListeners.forEach(o => o.call(null));
+  event.preventDefault();
+  try {
+    const loadedState = this.gameStateService.load();
+    GamePlay.showMessage('Игра успешно загружена!');
+
+    this.redrawPositions(loadedState.positionedCharacters);
+    
+    this.loadGameListeners.forEach(o => o.call(null, loadedState));
+  } catch (e) {
+    GamePlay.showError(e.message);
   }
+}
 
   static showError(message) {
     alert(message);
@@ -201,7 +182,10 @@ export default class GamePlay {
   }
 
   hideCellTooltip(index) {
-    this.cells[index].title = '';
+    const cell = this.cells[index];
+    if (cell) {
+      cell.title = '';
+    } 
   }
   
   showDamage(index, damage) {

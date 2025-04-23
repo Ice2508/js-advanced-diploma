@@ -4,14 +4,22 @@ export default class GameStateService {
   }
 
   save(state) {
-    this.storage.setItem('state', JSON.stringify(state));
+    try {
+      this.storage.setItem('gameState', JSON.stringify(state));
+    } catch {
+      throw new Error('Ошибка при сохранении игры');
+    }
   }
 
   load() {
     try {
-      return JSON.parse(this.storage.getItem('state'));
+      const state = this.storage.getItem('gameState');
+      if (!state) {
+        throw new Error('Ошибка при загрузке игры');
+      }
+      return JSON.parse(state);
     } catch (e) {
-      throw new Error('Invalid state');
+      throw new Error('Ошибка при загрузке игры: ' + e.message);
     }
   }
 }
